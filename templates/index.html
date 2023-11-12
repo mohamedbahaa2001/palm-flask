@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Generative AI Demo</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4; /* Light gray background */
+            background-image: url('https://www.transparenttextures.com/patterns/45-degree-fabric-light.png'); /* Background pattern */
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            margin: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 18px;
+            color: #555;
+        }
+
+        textarea {
+            width: 60%; /* Adjust the width as needed */
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #3498db; /* Border color */
+            border-radius: 12px; /* Add border-radius */
+            background-color: #ecf0f1; /* Light background color */
+            font-size: 16px;
+            color: #333;
+            transition: border-color 0.3s ease, background-color 0.3s ease; /* Add transitions */
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #2980b9; /* Change border color on focus */
+            background-color: #dfe6e9; /* Change background color on focus */
+        }
+
+        input[type="submit"], input[type="button"], input[type="checkbox"] {
+            background-color: #2ecc71; /* Change to a green color */
+            color: #fff;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px; /* Add border-radius */
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s ease; /* Add transition for a smooth hover effect */
+            margin-right: 10px;
+        }
+
+        input[type="submit"]:hover, input[type="button"]:hover, input[type="checkbox"]:hover {
+            background-color: #27ae60; /* Darker green on hover */
+        }
+
+        h2 {
+            margin-top: 30px;
+            opacity: 0; /* Initially hidden for entrance animation */
+            animation: fadeIn 1s ease-out forwards; /* Entrance animation */
+        }
+
+        .response-container {
+            position: relative;
+            display: inline-block;
+            background-color: #3498db; /* Speech bubble color */
+            border-radius: 12px; /* Rounded corners */
+            padding: 15px;
+            color: #fff; /* Text color */
+            font-size: 18px;
+            margin: 20px;
+            white-space: pre-line; /* Preserve line breaks */
+            overflow: hidden;
+        }
+
+        .word-by-word {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(1em);
+            animation: wordAppear 0.5s ease-out forwards;
+        }
+
+        @keyframes wordAppear {
+            from {
+                opacity: 0;
+                transform: translateY(1em);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #voiceIndicator {
+            display: none;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        #voiceActiveIndicator {
+            color: #e74c3c; /* Red color */
+            font-weight: bold;
+        }
+
+        #soundIndicator {
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<!--<h2>Conversation History:</h2>-->
+<!--    <ul>-->
+<!--        {% for prompt, response in conversation_history %}-->
+<!--            <li><strong>You:</strong> {{ prompt }}</li>-->
+<!--            <li><strong>AI:</strong> {{ response }}</li>-->
+<!--        {% endfor %}-->
+<!--    </ul>-->
+    <h1>Generative AI Demo</h1>
+    <form id="myForm" method="post">
+        <label for="prompt">Enter a prompt:</label>
+        <textarea name="prompt" id="prompt" rows="4" cols="50"></textarea>
+        <br>
+        <input type="submit" value="Generate Response" id="submitButton">
+        <input type="button" value="Start Voice Input" id="voiceButton">
+        <input type="button" value="Read Response" id="readResponseButton">
+        <input type="checkbox" id="voiceToggle" checked>
+        <label for="voiceToggle">Automate Voice Input</label>
+        <div id="voiceIndicator">
+            Voice Input Status: <span id="voiceActiveIndicator"></span>
+        </div>
+        <div id="soundIndicator">
+            <audio id="audioIndicator" src="https://www.soundjay.com/button/beep-01a.mp3" preload="auto"></audio>
+        </div>
+    </form>
+    <h2>Generated Response:</h2>
+    <div class="response-container word-by-word" id="responseContainer">
+        {{ response_text }}
+    </div>
+
+    <script>
+        // Trigger the form submission when Enter is pressed in the textarea
+        document.getElementById('prompt').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('submitButton').click();
+            }
+        });
+
+        // Voice-to-text functionality
+        const voiceButton = document.getElementById('voiceButton');
+        const promptTextarea = document.getElementById('prompt');
+        const voiceIndicator = document.getElementById('voiceIndicator');
+        const voiceActiveIndicator = document.getElementById('voiceActiveIndicator');
+        const soundIndicator = document.getElementById('soundIndicator');
+        const audioIndicator = document.getElementById('audioIndicator');
+        const voiceToggle = document.getElementById('voiceToggle');
+
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+
+            recognition.onstart = function () {
+                voiceActiveIndicator.textContent = 'Active';
+                voiceIndicator.style.display = 'block';
+                soundIndicator.style.display = 'block';
+                audioIndicator.play();
+            };
+
+            recognition.onend = function () {
+                voiceActiveIndicator.textContent = 'Inactive';
+                audioIndicator.pause();
+                audioIndicator.currentTime = 0;
+                if (voiceToggle.checked) {
+                    document.getElementById('submitButton').click();
+                }
+            };
+
+            voiceButton.addEventListener('click', function () {
+                recognition.start();
+            });
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                promptTextarea.value = transcript;
+            };
+
+            recognition.onerror = function (event) {
+                console.error('Speech recognition error:', event.error);
+            };
+        } else {
+            console.error('Web Speech API is not supported in this browser.');
+            voiceButton.disabled = true;
+        }
+
+        // Text-to-speech functionality
+        const readResponseButton = document.getElementById('readResponseButton');
+        const responseContainer = document.getElementById('responseContainer');
+        let utterance = null;
+
+        readResponseButton.addEventListener('click', function () {
+            if (utterance) {
+                if (utterance.paused) {
+                    utterance.resume();
+                    readResponseButton.value = 'Pause Reading';
+                } else {
+                    utterance.pause();
+                    readResponseButton.value = 'Resume Reading';
+                }
+            } else {
+                const textToRead = responseContainer.innerText;
+                if ('speechSynthesis' in window) {
+                    utterance = new SpeechSynthesisUtterance(textToRead);
+                    speechSynthesis.speak(utterance);
+                    readResponseButton.value = 'Pause Reading';
+                } else {
+                    console.error('Speech synthesis is not supported in this browser.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
